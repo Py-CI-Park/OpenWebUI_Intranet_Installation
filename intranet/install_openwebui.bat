@@ -154,7 +154,7 @@ echo @echo off > "%INSTALL_PATH%\start_openwebui.bat"
 echo cd /d "%INSTALL_PATH%" >> "%INSTALL_PATH%\start_openwebui.bat"
 echo call venv\Scripts\activate.bat >> "%INSTALL_PATH%\start_openwebui.bat"
 echo echo Open Web UI를 시작합니다... >> "%INSTALL_PATH%\start_openwebui.bat"
-echo open-webui serve >> "%INSTALL_PATH%\start_openwebui.bat"
+echo open-webui serve --host 0.0.0.0 --port 8080 >> "%INSTALL_PATH%\start_openwebui.bat"
 echo pause >> "%INSTALL_PATH%\start_openwebui.bat"
 
 REM 바탕화면 바로가기 생성 (선택사항)

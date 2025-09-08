@@ -85,7 +85,15 @@ if exist "%START_SCRIPT%" (
     echo.
     
     REM Open Web UI 실행
-    open-webui serve --host 0.0.0.0 --port 8080 2>&1 | tee "%LOG_FILE%"
+    REM Windows 기본 CMD에는 tee가 없어 PowerShell Tee-Object를 우선 사용하고,
+    REM 사용 불가 시 파일 리디렉션으로 대체합니다.
+    where powershell >nul 2>&1
+    if %errorLevel% EQU 0 (
+        powershell -NoProfile -Command "$log=$env:LOG_FILE; & open-webui serve --host 0.0.0.0 --port 8080 2>&1 | Tee-Object -FilePath $log -Append; exit $LASTEXITCODE"
+    ) else (
+        echo [WARNING] PowerShell을 찾을 수 없습니다. 로그 파일로만 기록합니다.
+        open-webui serve --host 0.0.0.0 --port 8080 >> "%LOG_FILE%" 2>&1
+    )
     
     if %errorLevel% neq 0 (
         echo.
