@@ -52,8 +52,10 @@ Expand-Archive -Path "openwebui_intranet_package_YYYYMMDD_HHMMSS.zip" -Destinati
 
 # 2. 설치 실행
 cd packages/
-install_openwebui.bat
+..\intranet\install_openwebui.bat
 ```
+
+주의: 인터넷 PC와 폐쇄망 PC의 Python 버전(메이저/마이너)과 아키텍처(32/64bit)를 맞추는 것을 권장합니다. 휠(whl) 호환성 확보를 위함입니다.
 
 ### 🎉 STEP 4: 실행 및 접속
 ```batch
@@ -64,7 +66,7 @@ install_openwebui.bat
 C:\OpenWebUI\start_openwebui.bat
 
 # 실행 방법 3: 실행 스크립트 사용
-run_openwebui.bat
+intranet\run_openwebui.bat
 ```
 
 웹 브라우저에서 **http://localhost:8080** 접속
