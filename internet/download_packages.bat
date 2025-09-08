@@ -44,6 +44,16 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+REM Ensure modern setuptools/wheel for Python 3.12 sdists (e.g., docx2txt)
+echo(
+echo [STEP 2a] Ensuring compatible setuptools/wheel...
+python -m pip install --upgrade "setuptools>=70" wheel
+if %errorlevel% neq 0 (
+    echo [ERROR] Failed to upgrade setuptools/wheel. This is required to process sdists on Python 3.12.
+    pause
+    exit /b 1
+)
+
 REM STEP 3: Prepare download directory
 echo(
 echo [STEP 3/5] Preparing download directory...
