@@ -77,7 +77,6 @@ echo [INFO] 이 과정은 네트워크 상태에 따라 시간이 소요될 수 
 echo.
 
 cd /d "%DOWNLOAD_DIR%"
-python -m pip download open-webui --dest . --no-deps
 if %errorLevel% neq 0 (
     echo [ERROR] Open Web UI 다운로드에 실패했습니다.
     cd /d "%~dp0"
@@ -97,6 +96,11 @@ if %errorLevel% neq 0 (
 REM 패키지 압축
 echo.
 echo [STEP 5/5] 패키지 압축 중...
+echo [INFO] 오프라인 설치 안정화를 위한 pip/setuptools/wheel 추가 다운로드..
+python -m pip download pip setuptools wheel --dest .
+if %errorLevel% neq 0 (
+    echo [WARNING] pip/setuptools/wheel 다운로드에 실패했습니다. 계속 진행합니다.
+)
 cd /d "%~dp0"
 
 set ARCHIVE_NAME=openwebui_intranet_package_%date:~0,4%%date:~5,2%%date:~8,2%_%time:~0,2%%time:~3,2%%time:~6,2%
