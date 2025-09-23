@@ -1,192 +1,276 @@
 @echo off
-chcp 65001 >nul
-cls
+setlocal EnableExtensions EnableDelayedExpansion
+
+REM =============================================================
+REM Open Web UI Offline Installer (ASCII-only, offline-safe)
+REM =============================================================
 
 echo.
-echo    ███████╗██████╗ ███████╗███╗   ██╗    ██╗    ██╗███████╗██████╗     ██╗   ██╗██╗
-echo    ██╔═══██╗██╔══██╗██╔════╝████╗  ██║    ██║    ██║██╔════╝██╔══██╗    ██║   ██║██║
-echo    ██║   ██║██████╔╝█████╗  ██╔██╗ ██║    ██║ █╗ ██║█████╗  ██████╔╝    ██║   ██║██║
-echo    ██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║    ██║███╗██║██╔══╝  ██╔══██╗    ██║   ██║██║
-echo    ╚██████╔╝██║     ███████╗██║ ╚████║    ╚███╔███╔╝███████╗██████╔╝    ╚██████╔╝██║
-echo     ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝     ╚══╝╚══╝ ╚══════╝╚═════╝      ╚═════╝ ╚═╝
-echo.
-echo    ██╗███╗   ██╗███████╗████████╗ █████╗ ██╗     ██╗     ███████╗██████╗
-echo    ██║████╗  ██║██╔════╝╚══██╔══╝██╔══██╗██║     ██║     ██╔════╝██╔══██╗
-echo    ██║██╔██╗ ██║███████╗   ██║   ███████║██║     ██║     █████╗  ██████╔╝
-echo    ██║██║╚██╗██║╚════██║   ██║   ██╔══██║██║     ██║     ██╔══╝  ██╔══██╗
-echo    ██║██║ ╚████║███████║   ██║   ██║  ██║███████╗███████╗███████╗██║  ██║
-echo    ╚═╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝
-echo.
-echo    ═══════════════════════════════════════════════════════════════════════════════════════
-echo                        Open Web UI 폐쇄망 설치 관리자 v1.0
-echo                              Intranet Installation Manager
-echo    ═══════════════════════════════════════════════════════════════════════════════════════
-echo.
+echo [Open Web UI] Offline installation starting...
 
-REM 관리자 권한 확인
-net session >nul 2>&1
-if %errorLevel% == 0 (
-    echo [INFO] 관리자 권한으로 실행 중입니다.
+REM ---------------------------
+REM 0) Locate packages (folder or zip)
+REM ---------------------------
+set "SCRIPT_DIR=%~dp0"
+set "PACKAGES_DIR="
+set "PACKAGES_ZIP="
+
+REM If argument provided and is a folder with packages, use it
+if not "%~1"=="" (
+  if exist "%~1\*.whl" (
+    set "PACKAGES_DIR=%~1"
+  ) else if exist "%~1\*.tar.gz" (
+    set "PACKAGES_DIR=%~1"
+  ) else (
+    if exist "%~1" (
+      REM If it's a zip archive
+      for %%Z in ("%~1") do (
+        set "_ext=%%~xZ"
+        if /I "!_ext!"==".zip" set "PACKAGES_ZIP=%%~fZ"
+      )
+    )
+  )
+)
+
+REM If not set, check current directory (flat wheels)
+if not defined PACKAGES_DIR if exist "%CD%\*.whl" set "PACKAGES_DIR=%CD%"
+
+REM If not set, check a local 'openwebui_packages' folder next to the script
+if not defined PACKAGES_DIR if exist "%SCRIPT_DIR%openwebui_packages\*.whl" set "PACKAGES_DIR=%SCRIPT_DIR%openwebui_packages"
+if not defined PACKAGES_DIR if exist "%SCRIPT_DIR%openwebui_packages\*.tar.gz" set "PACKAGES_DIR=%SCRIPT_DIR%openwebui_packages"
+
+REM If not set, check a local 'openwebui_packages' folder under current directory
+if not defined PACKAGES_DIR if exist "%CD%\openwebui_packages\*.whl" set "PACKAGES_DIR=%CD%\openwebui_packages"
+if not defined PACKAGES_DIR if exist "%CD%\openwebui_packages\*.tar.gz" set "PACKAGES_DIR=%CD%\openwebui_packages"
+
+REM If not set, check parent of script directory (common layout: ..\openwebui_packages)
+if not defined PACKAGES_DIR if exist "%SCRIPT_DIR%..\openwebui_packages\*.whl" set "PACKAGES_DIR=%SCRIPT_DIR%..\openwebui_packages"
+if not defined PACKAGES_DIR if exist "%SCRIPT_DIR%..\openwebui_packages\*.tar.gz" set "PACKAGES_DIR=%SCRIPT_DIR%..\openwebui_packages"
+
+REM If not set, check parent of current directory
+if not defined PACKAGES_DIR if exist "%CD%\..\openwebui_packages\*.whl" set "PACKAGES_DIR=%CD%\..\openwebui_packages"
+if not defined PACKAGES_DIR if exist "%CD%\..\openwebui_packages\*.tar.gz" set "PACKAGES_DIR=%CD%\..\openwebui_packages"
+
+REM If not set, check sibling internet/openwebui_packages
+if not defined PACKAGES_DIR if exist "%SCRIPT_DIR%..\internet\openwebui_packages\*.whl" set "PACKAGES_DIR=%SCRIPT_DIR%..\internet\openwebui_packages"
+
+REM If not set, try to find a zip next to the repo's internet folder
+if not defined PACKAGES_ZIP (
+  REM Look under repo's internet folder
+  for /f "delims=" %%Z in ('dir /b /s /a:-d "%SCRIPT_DIR%..\internet\openwebui_intranet_package_*.zip" 2^>nul') do (
+    set "PACKAGES_ZIP=%%Z"
+    goto :_zip_found
+  )
+  REM Look in script directory
+  for /f "delims=" %%Z in ('dir /b /s /a:-d "%SCRIPT_DIR%openwebui_intranet_package_*.zip" 2^>nul') do (
+    set "PACKAGES_ZIP=%%Z"
+    goto :_zip_found
+  )
+  REM Look in current working directory
+  for /f "delims=" %%Z in ('dir /b /s /a:-d "%CD%\openwebui_intranet_package_*.zip" 2^>nul') do (
+    set "PACKAGES_ZIP=%%Z"
+    goto :_zip_found
+  )
+  REM Fallback: pick any .zip in internet folder (most recent)
+  for /f "delims=" %%Z in ('dir /b /s /a:-d /o:-d "%SCRIPT_DIR%..\internet\*.zip" 2^>nul') do (
+    set "PACKAGES_ZIP=%%Z"
+    goto :_zip_found
+  )
+  REM Fallback: pick any .zip near script folder (most recent)
+  for /f "delims=" %%Z in ('dir /b /s /a:-d /o:-d "%SCRIPT_DIR%*.zip" 2^>nul') do (
+    set "PACKAGES_ZIP=%%Z"
+    goto :_zip_found
+  )
+  REM Fallback: pick any .zip under current directory (most recent)
+  for /f "delims=" %%Z in ('dir /b /s /a:-d /o:-d "%CD%\*.zip" 2^>nul') do (
+    set "PACKAGES_ZIP=%%Z"
+    goto :_zip_found
+  )
+)
+:_zip_found
+
+REM If we have a zip but no folder, extract it
+if not defined PACKAGES_DIR if defined PACKAGES_ZIP (
+  set "TMP_PACK_DIR=%TEMP%\openwebui_packages_%RANDOM%%RANDOM%"
+  echo [INFO] Extracting packages: "%PACKAGES_ZIP%"
+  powershell -NoProfile -Command "Expand-Archive -Path '%PACKAGES_ZIP%' -DestinationPath '%TMP_PACK_DIR%' -Force" 1>nul 2>nul
+  if errorlevel 1 (
+    echo [ERROR] Failed to extract packages zip. Please extract manually.
+    goto :_abort
+  )
+  set "PACKAGES_DIR=%TMP_PACK_DIR%"
+)
+
+if not defined PACKAGES_DIR (
+  echo [ERROR] Packages not found.
+  echo         Provide path to extracted packages folder (with .whl files),
+  echo         or place a zip named openwebui_intranet_package_*.zip under the internet/ folder,
+  echo         or pass the full path to the zip or folder as an argument.
+  echo         Usage: install_openwebui.bat "C:\path\to\packages"
+  echo         Searched paths:
+  echo           - %SCRIPT_DIR%..\internet\openwebui_intranet_package_*.zip
+  echo           - %SCRIPT_DIR%openwebui_intranet_package_*.zip
+  echo           - %CD%\openwebui_intranet_package_*.zip
+  echo           - %SCRIPT_DIR%openwebui_packages\
+  echo           - %CD%\openwebui_packages\
+  echo           - %SCRIPT_DIR%..\openwebui_packages\
+  echo           - %CD%\..\openwebui_packages\
+  goto :_abort
+)
+
+echo [INFO] Packages directory: %PACKAGES_DIR%
+
+REM ---------------------------
+REM 1) Check Python availability
+REM ---------------------------
+python -c "import sys;print(sys.version)" >nul 2>&1
+if errorlevel 1 (
+  echo [ERROR] Python not found. Install Python 3.x and try again.
+  goto :_abort
+)
+
+for /f %%v in ('python -c "import sys;print(str(sys.version_info.major)+str(sys.version_info.minor))"') do set "PY_DETECTED=%%v"
+for /f %%b in ('python -c "import struct;print(struct.calcsize(\"P\")*8)"') do set "PY_BITS=%%b"
+echo [INFO] Python detected: %PY_DETECTED% (%PY_BITS%-bit)
+
+if not "%PY_BITS%"=="64" (
+  echo [ERROR] 64-bit Python is required (packages are win_amd64).
+  goto :_abort
+)
+
+REM Infer required cp tag from wheel names (if any compiled wheels exist)
+set "REQ_TAG="
+for %%t in (cp312 cp311 cp310 cp39 cp38) do (
+  dir /b "%PACKAGES_DIR%\*%%t*.whl" >nul 2>&1 && (
+    set "REQ_TAG=%%t"
+    goto :_tag_found
+  )
+)
+:_tag_found
+if defined REQ_TAG (
+  for /f "tokens=2 delims=p" %%x in ("%REQ_TAG%") do set "REQ_PY=%%x"
+  if not "%PY_DETECTED%"=="%REQ_PY%" (
+    echo [ERROR] Python %REQ_PY% required by wheels (found %PY_DETECTED%).
+    echo         Install matching Python version and retry.
+    goto :_abort
+  )
+  echo [INFO] Wheels require CPython tag: %REQ_TAG%
 ) else (
-    echo [WARNING] 관리자 권한이 아닙니다. 설치 경로에 대한 권한을 확인해주세요.
+  echo [INFO] No CPython-specific wheels detected; proceeding.
 )
 
-REM 현재 디렉토리 확인
-echo [INFO] 현재 작업 디렉토리: %CD%
-echo.
-
-REM 설치 경로 설정
-set INSTALL_PATH=C:\OpenWebUI
-set VENV_PATH=%INSTALL_PATH%\venv
-set PACKAGES_PATH=%CD%
-
-echo [INFO] 설치 경로: %INSTALL_PATH%
-echo [INFO] 가상환경 경로: %VENV_PATH%
-echo [INFO] 패키지 경로: %PACKAGES_PATH%
-echo.
-
-REM Python 설치 확인
-echo [STEP 1/7] Python 설치 확인 중...
-python --version >nul 2>&1
-if %errorLevel% neq 0 (
-    echo [ERROR] Python이 설치되지 않았습니다.
-    echo [ERROR] Python 3.8 이상이 필요합니다.
-    pause
-    exit /b 1
+REM ---------------------------
+REM 2) Choose install directory (try C:\OpenWebUI, fallback to LocalAppData)
+REM ---------------------------
+set "INSTALL_PATH=C:\OpenWebUI"
+mkdir "%INSTALL_PATH%\_perm_test" >nul 2>&1
+if errorlevel 1 (
+  set "INSTALL_PATH=%LocalAppData%\OpenWebUI"
 )
+if exist "%INSTALL_PATH%\_perm_test" rmdir "%INSTALL_PATH%\_perm_test" >nul 2>&1
 
-for /f "tokens=2" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
-echo [INFO] Python 버전: %PYTHON_VERSION%
+set "VENV_PATH=%INSTALL_PATH%\venv"
+echo [INFO] Install dir: %INSTALL_PATH%
 
-REM 패키지 파일 확인
-echo.
-echo [STEP 2/7] 패키지 파일 확인 중...
-if not exist "*.whl" (
-    if not exist "*.tar.gz" (
-        echo [ERROR] 패키지 파일을 찾을 수 없습니다.
-        echo [ERROR] 다운로드한 패키지 파일들이 현재 디렉토리에 있는지 확인해주세요.
-        echo [ERROR] 필요한 파일: *.whl, *.tar.gz
-        pause
-        exit /b 1
-    )
-)
-echo [INFO] 패키지 파일이 확인되었습니다.
-
-REM 설치 디렉토리 생성
-echo.
-echo [STEP 3/7] 설치 디렉토리 준비 중...
 if exist "%INSTALL_PATH%" (
-    echo [WARNING] 기존 설치 디렉토리가 존재합니다.
-    echo [WARNING] 기존 설치를 제거하고 새로 설치하시겠습니까? (Y/N)
-    set /p CONFIRM=선택: 
-    if /i "%CONFIRM%"=="Y" (
-        echo [INFO] 기존 설치를 제거합니다...
-        rmdir /s /q "%INSTALL_PATH%"
-    ) else (
-        echo [INFO] 설치를 취소합니다.
-        pause
-        exit /b 0
-    )
+  echo [INFO] Reusing existing directory.
+) else (
+  mkdir "%INSTALL_PATH%" >nul 2>&1
+  if errorlevel 1 (
+    echo [ERROR] Cannot create install dir: %INSTALL_PATH%
+    goto :_abort
+  )
 )
 
-mkdir "%INSTALL_PATH%" 2>nul
-if %errorLevel% neq 0 (
-    echo [ERROR] 설치 디렉토리를 생성할 수 없습니다.
-    echo [ERROR] 관리자 권한으로 실행하거나 경로를 확인해주세요.
-    pause
-    exit /b 1
+REM ---------------------------
+REM 3) Create virtual environment
+REM ---------------------------
+if not exist "%VENV_PATH%\Scripts\activate.bat" (
+  echo [STEP] Creating Python venv...
+  python -m venv "%VENV_PATH%"
+  if errorlevel 1 (
+    echo [ERROR] Failed to create virtual environment.
+    goto :_abort
+  )
+) else (
+  echo [INFO] Using existing venv.
 )
-echo [INFO] 설치 디렉토리가 생성되었습니다: %INSTALL_PATH%
 
-REM 가상환경 생성
-echo.
-echo [STEP 4/7] Python 가상환경 생성 중...
-python -m venv "%VENV_PATH%"
-if %errorLevel% neq 0 (
-    echo [ERROR] 가상환경 생성에 실패했습니다.
-    pause
-    exit /b 1
-)
-echo [INFO] 가상환경이 생성되었습니다: %VENV_PATH%
-
-REM 가상환경 활성화
-echo.
-echo [STEP 5/7] 가상환경 활성화 중...
 call "%VENV_PATH%\Scripts\activate.bat"
-if %errorLevel% neq 0 (
-    echo [ERROR] 가상환경 활성화에 실패했습니다.
-    pause
-    exit /b 1
-)
-echo [INFO] 가상환경이 활성화되었습니다.
-
-REM pip 업그레이드
-echo.
-echo [STEP 6/7] pip 업그레이드 중...
-python -m pip install --upgrade pip --no-index --find-links "%PACKAGES_PATH%"
-if %errorLevel% neq 0 (
-    echo [WARNING] pip 업그레이드에 실패했습니다. 계속 진행합니다.
+if errorlevel 1 (
+  echo [ERROR] Failed to activate venv.
+  goto :_abort
 )
 
-REM Open Web UI 설치
-echo.
-echo [STEP 7/7] Open Web UI 설치 중...
-echo [INFO] 이 과정은 시간이 소요될 수 있습니다...
-python -m pip install --no-index --find-links "%PACKAGES_PATH%" open-webui
-if %errorLevel% neq 0 (
-    echo [ERROR] Open Web UI 설치에 실패했습니다.
-    echo [ERROR] 패키지 파일들을 확인해주세요.
-    pause
-    exit /b 1
+REM ---------------------------
+REM 4) Install/upgrade build tools from local wheels
+REM ---------------------------
+echo [STEP] Installing pip/setuptools/wheel (offline)...
+python -m pip install --no-index --find-links "%PACKAGES_DIR%" pip setuptools wheel >nul
+if errorlevel 1 (
+  echo [WARN] Could not install/upgrade pip tools from local cache.
 )
 
-REM 설치 확인
-echo.
-echo [INFO] 설치 확인 중...
-python -c "import open_webui; print('Open Web UI 설치 완료!')" 2>nul
-if %errorLevel% neq 0 (
-    echo [WARNING] 설치 확인에 실패했습니다. 하지만 설치는 완료되었을 수 있습니다.
+REM ---------------------------
+REM 5) Install Open Web UI (offline)
+REM ---------------------------
+echo [STEP] Installing open-webui (offline)... This may take a while.
+python -m pip install --no-index --find-links "%PACKAGES_DIR%" open-webui
+if errorlevel 1 (
+  echo [ERROR] Failed to install open-webui from local packages.
+  goto :_abort
 )
 
-REM 실행 스크립트 생성
-echo [INFO] 실행 스크립트를 생성합니다...
-echo @echo off > "%INSTALL_PATH%\start_openwebui.bat"
-echo cd /d "%INSTALL_PATH%" >> "%INSTALL_PATH%\start_openwebui.bat"
-echo call venv\Scripts\activate.bat >> "%INSTALL_PATH%\start_openwebui.bat"
-echo echo Open Web UI를 시작합니다... >> "%INSTALL_PATH%\start_openwebui.bat"
-echo open-webui serve --host 0.0.0.0 --port 8080 >> "%INSTALL_PATH%\start_openwebui.bat"
-echo pause >> "%INSTALL_PATH%\start_openwebui.bat"
-
-REM 바탕화면 바로가기 생성 (선택사항)
-echo.
-echo [INFO] 바탕화면 바로가기를 생성하시겠습니까? (Y/N)
-set /p CREATE_SHORTCUT=선택: 
-if /i "%CREATE_SHORTCUT%"=="Y" (
-    powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%USERPROFILE%\Desktop\Open Web UI.lnk'); $Shortcut.TargetPath = '%INSTALL_PATH%\start_openwebui.bat'; $Shortcut.WorkingDirectory = '%INSTALL_PATH%'; $Shortcut.IconLocation = 'shell32.dll,21'; $Shortcut.Save()"
-    echo [INFO] 바탕화면 바로가기가 생성되었습니다.
+REM Quick import check
+python -c "import sys; import importlib; importlib.import_module('open_webui'); print('OK')" >nul 2>&1
+if errorlevel 1 (
+  echo [WARN] Installation verification failed, but install may still be usable.
 )
 
-REM 완료 메시지
+REM ---------------------------
+REM 6) Write start script
+REM ---------------------------
+set "START_BAT=%INSTALL_PATH%\start_openwebui.bat"
+(
+  echo @echo off
+  echo setlocal EnableExtensions
+  echo cd /d "%%~dp0"
+  echo call "venv\Scripts\activate.bat"
+  echo set "HOST=0.0.0.0"
+  echo set "PORT=8080"
+  echo echo Starting Open Web UI on http://%%HOST%%:%%PORT%% ...
+  echo open-webui serve --host %%HOST%% --port %%PORT%%
+) > "%START_BAT%"
+if errorlevel 1 (
+  echo [ERROR] Failed to create start script: %START_BAT%
+  goto :_abort
+)
+
+REM ---------------------------
+REM 7) Try adding firewall rule (optional)
+REM ---------------------------
+where netsh >nul 2>&1 && (
+  netsh advfirewall firewall add rule name="Open Web UI 8080" dir=in action=allow protocol=TCP localport=8080 >nul 2>&1
+)
+
 echo.
-echo ═══════════════════════════════════════════════════════════════════════════════════════
-echo                                   설치 완료!
-echo ═══════════════════════════════════════════════════════════════════════════════════════
+echo =============================================
+echo  Open Web UI offline installation complete
+echo =============================================
+echo Install dir : %INSTALL_PATH%
+echo Venv        : %VENV_PATH%
+echo Start script: %START_BAT%
+echo URL         : http://localhost:8080
 echo.
-echo [SUCCESS] Open Web UI가 성공적으로 설치되었습니다!
+echo To run now:
+echo   "%START_BAT%"
 echo.
-echo [설치 정보]
-echo - 설치 경로: %INSTALL_PATH%
-echo - 가상환경: %VENV_PATH%
-echo - 실행 파일: %INSTALL_PATH%\start_openwebui.bat
+endlocal
+exit /b 0
+
+:_abort
 echo.
-echo [실행 방법]
-echo 1. %INSTALL_PATH%\start_openwebui.bat 실행
-echo 2. 또는 바탕화면의 'Open Web UI' 바로가기 실행
-echo 3. 웹 브라우저에서 http://localhost:8080 접속
-echo.
-echo [주의사항]
-echo - 방화벽에서 포트 8080을 허용해야 할 수 있습니다.
-echo - 처음 실행 시 계정 생성이 필요합니다.
-echo.
-echo [INFO] 설치가 완료되었습니다. 아무 키나 누르면 종료됩니다.
+echo [INFO] Installation aborted. Press any key to close...
 pause >nul
+endlocal
+exit /b 1

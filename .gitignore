@@ -1,0 +1,76 @@
+# ------------------------------------------------------------
+# Git ignore rules for OpenWebUI Intranet Installation project
+# 목적: OS/IDE 잡파일, 빌드 산출물, 로컬 패키지/아카이브를 제외
+# ------------------------------------------------------------
+
+# OS / 일반 임시 파일
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.orig
+~$*
+
+# IDE / 에디터
+.vscode/
+.idea/
+.vs/
+*.code-workspace
+
+# 로그 / 캐시
+*.log
+*.err
+logs/
+.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+ENV/
+env/
+pip-wheel-metadata/
+*.egg-info/
+.eggs/
+dist/
+build/
+develop-eggs/
+.installed.cfg
+.mypy_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.python-version
+.env
+.env.*
+
+# Node / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# 프로젝트 특화: 오프라인 패키지 및 아카이브 산출물
+# 다운로드 스크립트가 생성하는 로컬 패키지 폴더 및 압축 파일
+openwebui_packages/
+packages/
+**/openwebui_packages/
+**/packages/
+internet/*.zip
+
+# 기타 임시 디렉터리
+tmp/
+temp/
+.tmp/
+
