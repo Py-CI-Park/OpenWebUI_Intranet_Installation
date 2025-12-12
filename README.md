@@ -1,7 +1,7 @@
 ﻿# Open WebUI 폐쇄망(오프라인) 설치 자동화 프로젝트
 
-> **Commit:** c7ee2ea1d556109222e377743a322401ce8a108f
-> **Branch:** feature/used_version
+> **Commit:** cc474605d12a90846b32553c9f378bad4de47fb0
+> **Branch:** main
 > **프로젝트 목적:** 인터넷이 차단된 폐쇄망 환경에서 Open WebUI를 자동으로 설치하고 실행할 수 있도록 지원
 
 ---
@@ -17,6 +17,7 @@
 7. [코드 목적 분석](#코드-목적-분석)
 8. [개선 제안사항](#개선-제안사항)
 9. [문제 해결](#문제-해결)
+10. [추가 폴더 가이드 (Archive 제외)](#추가-폴더-가이드-archive-제외)
 
 ---
 
@@ -867,6 +868,25 @@ open-webui serve
 
 ---
 
+## 추가 폴더 가이드 (Archive 제외)
+
+### docs/
+- `docs/README.md`: 문서 폴더 개요와 사용법. 초기 가이드(`usage_guide.md`)의 한글 깨짐 가능성을 언급하고, 최신 README를 우선 참고하도록 안내.
+
+### internet/ (온라인 패키지 준비)
+- `download_packages.bat`: 인터넷 PC에서 Open WebUI + 의존성을 `openwebui_packages/`로 다운로드하고 `openwebui_intranet_package_*.zip` 생성.  
+- 요구사항: Windows, Python 3.8+ 64bit, 네트워크 연결.  
+- 산출물: 패키지 캐시 폴더와 전달용 ZIP(폐쇄망으로 복사 후 사용).
+
+### intranet/ (폐쇄망 설치/실행)
+- `install_openwebui.bat`: 패키지 ZIP/폴더를 자동 탐색 후 venv 생성, `--no-index --find-links`로 오프라인 설치, `start_openwebui.bat` 작성.  
+- `run_openwebui.bat`: venv 활성화 후 Open WebUI 실행(기본 8080, 인자 또는 `OPENWEBUI_PORT`로 변경 가능).  
+- 포트 충돌·방화벽·Python 버전 불일치 등 주요 오류에 대한 대응 포함.
+
+> 세부 사용법과 문제 해결은 각 폴더의 README를 참고하세요.
+
+---
+
 ## 결론
 
 이 프로젝트는 **폐쇄망 환경에서 AI 기술을 안전하게 사용**할 수 있도록 하는 실용적인 솔루션입니다.
@@ -907,5 +927,4 @@ open-webui serve
 **작성일**: 2025-12-12
 **버전**: 1.0.0
 **작성자**: Claude (코드 분석 및 문서화)
-**대상 커밋**: c7ee2ea1d556109222e377743a322401ce8a108f
-
+**대상 커밋**: cc474605d12a90846b32553c9f378bad4de47fb0
